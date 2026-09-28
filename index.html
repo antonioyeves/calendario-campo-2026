@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Calendario de Campo - CIDE</title>
+<title>Calendario de Campo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -40,7 +40,8 @@ const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','
 const DOW=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'], DOWS=['dom','lun','mar','mié','jue','vie','sáb'];
 const TODAY=new Date();
 const state={user:null,role:null,projects:[],personas:[],vehiculos:[],entries:{},vacaciones:{},hidden:{},showVac:true,year:TODAY.getFullYear(),month:TODAY.getMonth(),channels:[]};
-const $=id=>document.getElementById(id); const esc=s=>(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+function esc(s){return String(s||'').replace(/[&<>\"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c];});}
 const pad=n=>n<10?'0'+n:''+n; const dk=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const find=(a,id)=>a.find(x=>x.id===id); const canEdit=()=>state.role==='admin'||state.role==='editor'; const isAdmin=()=>state.role==='admin';
 function colorForProject(id){let h=0;for(let c of id)h=(h*31+c.charCodeAt(0))>>>0;return `hsl(${h%360},42%,45%)`}
@@ -68,7 +69,39 @@ function renderMonths(){let w=$('months');w.innerHTML='';MESES.forEach((n,i)=>{l
 function activeProjects(){return state.projects.filter(p=>p.activo!==false&&!state.hidden[p.id])} function activePeople(){return state.personas.filter(p=>p.activo!==false)} function activeVehicles(){return state.vehiculos.filter(v=>v.activo!==false)}
 function renderChips(){let w=$('chiprow');w.innerHTML='';let ps=state.projects.filter(p=>p.activo!==false);let all=document.createElement('button');all.className='link-btn';let any=ps.some(p=>state.hidden[p.id]);all.textContent=any?'Mostrar todos los proyectos':'Ocultar todos los proyectos';all.onclick=()=>{if(any)state.hidden={};else ps.forEach(p=>state.hidden[p.id]=true);renderChips();renderGrid()};w.appendChild(all);ps.forEach(p=>{let s=document.createElement('span');s.className='chip'+(state.hidden[p.id]?' off':'');let d=document.createElement('span');d.className='dot';d.style.background=colorForProject(p.id);let b=document.createElement('button');b.textContent=p.nombre;b.onclick=()=>{state.hidden[p.id]=!state.hidden[p.id];renderChips();renderGrid()};s.append(d,b);w.appendChild(s)})}
 function renderEntry(btn,e){btn.innerHTML='';if(!e){btn.innerHTML='<span class="plus">+ añadir</span>';return}if(e.descripcion){let d=document.createElement('div');d.className='desc';d.textContent=e.descripcion;btn.appendChild(d)}let t=document.createElement('div');t.className='tags';if(e.estado==='realizada')t.innerHTML+='<span class="tag realizada">realizada</span>';if(e.estado==='cancelada')t.innerHTML+='<span class="tag cancelada">cancelada</span>';if(e.fecha_tipo==='aproximada')t.innerHTML+='<span class="tag aproximada">fecha aprox.</span>';if((e.personas||[]).length){let names=e.personas.map(id=>find(state.personas,id)?.nombre).filter(Boolean);t.innerHTML+=`<span class="tag">${esc(names.length===1?names[0]:names.length+' personas')}</span>`}if(e.vehiculo){let v=find(state.vehiculos,e.vehiculo);if(v)t.innerHTML+=`<span class="tag veh">${esc(v.nombre)}</span>`}btn.appendChild(t)}
-function renderGrid(){let w=$('gridWrap'),ps=activeProjects(),people=activePeople(),showVac=state.showVac&&people.length;let table=document.createElement('table');table.className='cal';let th=document.createElement('thead'),g=document.createElement('tr');let corner=document.createElement('th');corner.className='corner';corner.textContent=MESES[state.month]+' '+state.year;g.appendChild(corner);if(ps.length){let x=document.createElement('th');x.colSpan=ps.length;x.textContent='Proyectos en marcha';g.appendChild(x)}if(showVac){let x=document.createElement('th');x.colSpan=people.length;x.textContent='Vacaciones';g.appendChild(x)}th.appendChild(g);let det=document.createElement('tr');det.className='detail';let blank=document.createElement('th');blank.className='corner';blank.textContent='';det.appendChild(blank);ps.forEach(p=>{let x=document.createElement('th');x.innerHTML=`<span class="bar" style="background:${colorForProject(p.id)}"></span><span class="pname">${esc(p.nombre)}</span>${p.proyecto?'<span class="pline proy">'+esc(p.proyecto)+'</span>':''}${p.responsable?'<span class="pline">'+esc(p.responsable)+'</span>':''}${p.ubicacion?'<span class="pline">'+esc(p.ubicacion)+'</span>':''}`;det.appendChild(x)});if(showVac)people.forEach(p=>{let x=document.createElement('th');x.className='vac-th';x.innerHTML=`<span class="pname">${esc(p.nombre)}</span><span class="pline">Vacaciones</span>`;det.appendChild(x)});th.appendChild(det);table.appendChild(th);let body=document.createElement('tbody');days(state.month,state.year).forEach(d=>{let key=dk(d),tr=document.createElement('tr');if(d.getDay()===0||d.getDay()===6)tr.classList.add('weekend');if(key===dk(TODAY))tr.classList.add('today');let rh=document.createElement('th');rh.innerHTML=d.getDate()+' '+MESES[state.month].slice(0,3).toLowerCase()+`<span class="dow">${DOWS[d.getDay()]}</span>`;tr.appendChild(rh);ps.forEach(p=>{let td=document.createElement('td'),b=document.createElement('button');b.className='cell-btn';renderEntry(b,state.entries[p.id+'__'+key]);b.onclick=()=>openEntry(p,d,key);if(!canEdit())b.title='Solo lectura';td.appendChild(b);tr.appendChild(td)});if(showVac)people.forEach(p=>{let td=document.createElement('td');td.className='vac-td';let b=document.createElement('button');b.className='cell-btn';let v=state.vacaciones[p.id+'__'+key];b.innerHTML=v&&v.activo?'<span class="tag vac">Vacaciones</span>'+(v.nota?'<div class="desc">'+esc(v.nota)+'</div>'):'<span class="plus">+</span>';b.onclick=()=>openVacation(p,d,key);td.appendChild(b);tr.appendChild(td)});body.appendChild(tr)});table.appendChild(body);w.innerHTML='';w.appendChild(table)}
+function renderGrid(){
+  let w=$('gridWrap');
+  let ps=activeProjects();
+  let people=activePeople();
+  let showVac=state.showVac && people.length;
+  let table=document.createElement('table'); table.className='cal';
+  let thead=document.createElement('thead');
+  let group=document.createElement('tr');
+  let corner=document.createElement('th'); corner.className='corner'; corner.textContent=MESES[state.month]+' '+state.year; group.appendChild(corner);
+  if(ps.length){let x=document.createElement('th');x.colSpan=ps.length;x.textContent='Proyectos en marcha';group.appendChild(x);}
+  if(showVac){let x=document.createElement('th');x.colSpan=people.length;x.textContent='Vacaciones';group.appendChild(x);}
+  thead.appendChild(group);
+  let detail=document.createElement('tr'); detail.className='detail';
+  let blank=document.createElement('th'); blank.className='corner'; blank.textContent=''; detail.appendChild(blank);
+  ps.forEach(function(p){
+    let x=document.createElement('th');
+    x.innerHTML=`<span class="bar" style="background:${colorForProject(p.id)}"></span><span class="pname">${esc(p.nombre)}</span>${p.proyecto?'<span class="pline proy">'+esc(p.proyecto)+'</span>':''}${p.responsable?'<span class="pline">'+esc(p.responsable)+'</span>':''}${p.ubicacion?'<span class="pline">'+esc(p.ubicacion)+'</span>':''}`;
+    detail.appendChild(x);
+  });
+  if(showVac){people.forEach(function(p){let x=document.createElement('th');x.className='vac-th';x.innerHTML=`<span class="pname">${esc(p.nombre)}</span><span class="pline">Vacaciones</span>`;detail.appendChild(x);});}
+  thead.appendChild(detail); table.appendChild(thead);
+  let body=document.createElement('tbody');
+  days(state.month,state.year).forEach(function(d){
+    let key=dk(d); let tr=document.createElement('tr');
+    if(d.getDay()===0||d.getDay()===6)tr.classList.add('weekend');
+    if(key===dk(TODAY))tr.classList.add('today');
+    let rh=document.createElement('th'); rh.innerHTML=d.getDate()+' '+MESES[state.month].slice(0,3).toLowerCase()+`<span class="dow">${DOWS[d.getDay()]}</span>`; tr.appendChild(rh);
+    ps.forEach(function(p){let td=document.createElement('td');let b=document.createElement('button');b.className='cell-btn';renderEntry(b,state.entries[p.id+'__'+key]);b.onclick=function(){openEntry(p,d,key)};if(!canEdit())b.title='Solo lectura';td.appendChild(b);tr.appendChild(td);});
+    if(showVac){people.forEach(function(p){let td=document.createElement('td');td.className='vac-td';let b=document.createElement('button');b.className='cell-btn';let v=state.vacaciones[p.id+'__'+key];b.innerHTML=v&&v.activo?'<span class="tag vac">Vacaciones</span>'+(v.nota?'<div class="desc">'+esc(v.nota)+'</div>':''):'<span class="plus">+</span>';b.onclick=function(){openVacation(p,d,key)};td.appendChild(b);tr.appendChild(td);});}
+    body.appendChild(tr);
+  });
+  table.appendChild(body); w.innerHTML=''; w.appendChild(table);
+}
 function modal(title,meta){let root=$('modalRoot'),ov=document.createElement('div');ov.className='overlay';let m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="modal-head"><div><h2>${esc(title)}</h2><div class="meta">${esc(meta||'')}</div></div><button class="modal-close">×</button></div><div class="modal-body"></div><div class="modal-foot"></div>`;ov.appendChild(m);root.appendChild(ov);let close=()=>ov.remove();m.querySelector('.modal-close').onclick=close;ov.onclick=e=>{if(e.target===ov)close()};return {ov,m,body:m.querySelector('.modal-body'),foot:m.querySelector('.modal-foot'),close}}
 async function saveEntry(key,pid,date,data){let payload={id:key,project_id:pid,fecha:date,descripcion:data.descripcion,personas:data.personas,material:data.material,vehiculo:data.vehiculo,estado:data.estado,fecha_tipo:data.fecha_tipo,referencia_historica:false,origen:'web',observaciones:data.observaciones||'',updated_at:new Date().toISOString()};let {error}=await sb.from('entries').upsert(payload);if(error)alert(error.message);else await loadAll()}
 async function deleteEntry(key){let {error}=await sb.from('entries').delete().eq('id',key);if(error)alert(error.message);else await loadAll()}
